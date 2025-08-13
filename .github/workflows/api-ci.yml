@@ -1,0 +1,60 @@
+name: Laravel API CI with Pest and PHPStan
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  api-check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: moussa.dev.com
+          POSTGRES_DB: projetfinetudesback
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2 with extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql,pgsql
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Configure .env for PostgreSQL
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=pgsql/' .env
+          sed -i 's/DB_HOST=127.0.0.1/DB_HOST=localhost/' .env
+          sed -i 's/DB_PORT=3306/DB_PORT=5432/' .env
+          sed -i 's/DB_DATABASE=laravel/DB_DATABASE=projetfinetudesback/' .env
+          sed -i 's/DB_USERNAME=root/DB_USERNAME=postgres/' .env
+          sed -i 's/DB_PASSWORD=/DB_PASSWORD=moussa.dev.com/' .env
+
+      - name: Run database migrations
+        run: php artisan migrate --force
+
+      - name: Run Pest tests
+        run: ./vendor/bin/pest
+
+      - name: Run PHPStan static analysis
+        run: ./vendor/bin/phpstan analyse
