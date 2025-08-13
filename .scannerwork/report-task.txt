@@ -1,0 +1,6 @@
+projectKey=projetfinetudesback
+serverUrl=http://localhost:9000
+serverVersion=25.8.0.112029
+dashboardUrl=http://localhost:9000/dashboard?id=projetfinetudesback
+ceTaskId=cfebd1fb-8d16-47cf-99e5-e08890060c2b
+ceTaskUrl=http://localhost:9000/api/ce/task?id=cfebd1fb-8d16-47cf-99e5-e08890060c2b
