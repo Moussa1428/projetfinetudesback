@@ -51,4 +51,8 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
+    public function admin()     { return $this->hasOne(Admin::class); }
+    public function assistant() { return $this->hasOne(Assistant::class); }
+    public function enseignant(){ return $this->hasOne(Enseignant::class); }
+
 }
