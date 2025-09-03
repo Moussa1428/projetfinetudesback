@@ -50,6 +50,8 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_active' => 'boolean',
     ];
+    protected $guard_name = 'sanctum';
+    protected $with = ['roles'];
 
     public function admin()
     {
@@ -66,5 +68,22 @@ class User extends Authenticatable
     public function etudiant()
     {
         return $this->hasOne(Etudiant::class);
+    }
+
+    public function groupesCree()
+    {
+        return $this->hasMany(Groupe::class, 'created_by');
+    }
+
+    public function groupesResponsable()
+    {
+        return $this->hasMany(Groupe::class, 'responsable_id');
+    }
+
+    public function groupesMembre()
+    {
+        return $this->belongsToMany(Groupe::class, 'groupe_user')
+            ->withPivot('role_in_groupe')
+            ->withTimestamps();
     }
 }

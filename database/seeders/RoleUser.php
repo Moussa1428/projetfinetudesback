@@ -21,7 +21,10 @@ class RoleUser extends Seeder
             'Etudiant'
         ];
         foreach ($roles as $role) {
-            Role::create(['name' => $role]);
+            Role::firstOrCreate(
+                ['name' => $role],
+                ['guard_name' => 'sanctum'] // <- IMPORTANT !
+            ); // Spécifie le guard si nécessaire
         }
     }
 }

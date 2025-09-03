@@ -45,6 +45,7 @@ class EtudiantController extends Controller
 
             $user = User::create($dataUser);
             $user->assignRole('Etudiant');
+            $user->hasRole('Etudiant');
 
             $classe = Classe::findOrFail($requestEtudiant->classe_id);
             $totalEtudiants = Etudiant::count() + 1;

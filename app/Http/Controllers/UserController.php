@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\RequestUser;
+use App\Models\Assistant;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,11 @@ class UserController extends Controller
             $data['password'] = Hash::make('passer123');
             $user = User::create($data);
             $user->assignRole('Assistant');
+            $user->hasRole('Assistant');
+
+            Assistant::create([
+                    'user_id' => $user->id
+                ]);
 
             return response()->json([
                 'message' => 'Utilisateur créé avec succès',

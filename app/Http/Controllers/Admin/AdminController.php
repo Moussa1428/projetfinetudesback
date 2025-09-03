@@ -4,79 +4,109 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RequestUser;
+use App\Mail\AdminCreated;
 use App\Models\Admin;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class AdminController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Vérifie que l'utilisateur connecté est Super_Admin
+     */
+    private function checkSuperAdmin()
+    {
+        $user = auth()->user(); // Utilisateur connecté
+        if (!$user || !$user->hasRole('Super_Admin')) {
+            abort(403, 'Accès refusé. Rôle Super_Admin requis.');
+        }
+    }
+
+    /**
+     * Liste tous les administrateurs
      */
     public function index()
     {
+        $this->checkSuperAdmin();
+
         $admins = User::role('Administrateur')->with('roles')->get();
         return response()->json($admins, 200);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Crée un nouvel administrateur
      */
     public function store(RequestUser $request)
     {
+        $this->checkSuperAdmin();
+
         try {
             $data = $request->validated();
             Log::info('Données reçues pour création Administrateur:', $data);
 
-            $data['password'] = Hash::make('passer123'); // mot de passe par défaut
+
+            // Générer un mot de passe aléatoire de 8 caractères
+            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+
+            $data['password'] = Hash::make($password); // mot de passe par défaut
             $user = User::create($data);
 
-            // Assigner le rôle Administrateur
+            // Assigner le rôle Administrateur avec le guard Sanctum
             $user->assignRole('Administrateur');
 
-            Admin::create([
-                    'user_id' => $user->id
-                ]);
+            // Créer l’enregistrement dans la table Admin
+            Admin::create(['user_id' => $user->id]);
+
+            // Mail::to($user->email)->send(new AdminCreated($user->email, $password));
+
+            Mail::to($user->email)->queue(new AdminCreated($user->email, $password));
 
             return response()->json([
                 'message' => 'Administrateur créé avec succès',
-                'user'    => $user->load('roles'),
+                'user' => $user->load('roles'),
             ], 201);
         } catch (\Exception $e) {
             Log::error('Erreur création Administrateur: ' . $e->getMessage());
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-
     /**
-     * Display the specified resource.
+     * Affiche un administrateur spécifique
      */
     public function show(string $id)
     {
+        $this->checkSuperAdmin();
+
         $user = User::with('roles')->findOrFail($id);
         return response()->json($user);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Met à jour un administrateur
      */
     public function update(RequestUser $request, $id)
     {
+        $this->checkSuperAdmin();
+
         try {
             $data = $request->validated();
             Log::info('Données validées pour update Administrateur:', $data);
 
             $user = User::findOrFail($id);
 
-            // Forcer le mot de passe par défaut
-            $data['password'] = Hash::make('passer123');
+            // Si un mot de passe est fourni, on le hash, sinon utiliser "passer123"
+            if (!empty($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            } else {
+                $data['password'] = Hash::make('passer123');
+            }
 
             $user->update($data);
 
@@ -85,28 +115,30 @@ class AdminController extends Controller
 
             return response()->json([
                 'message' => 'Administrateur mis à jour',
-                'user'    => $user->load('roles'),
+                'user' => $user->load('roles'),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Erreur validation update Administrateur:', $e->errors());
             return response()->json([
                 'message' => 'Erreur de validation',
-                'errors'  => $e->errors(),
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             Log::error('Erreur serveur update Administrateur: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Erreur serveur',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Supprime un administrateur
      */
     public function destroy(string $id)
     {
+        $this->checkSuperAdmin();
+
         $user = User::findOrFail($id);
         $user->delete();
 
