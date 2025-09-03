@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nom');
             $table->string('niveau');
-            $table->enum('filiere', ['Genie Logiciel','Reseaux et systeme','Intelligence Artificielle','Ingénierie de Données', 'Gestion']);
+            $table->enum('filiere', ['Genie Logiciel','Reseaux et Systeme','Intelligence Artificielle','Ingénierie de Données', 'Informatique Appliquée a la Gestion des Entreprises']);
             $table->string('anneeacademique');
             $table->string('code')->unique();
             $table->boolean('status')->default(true);

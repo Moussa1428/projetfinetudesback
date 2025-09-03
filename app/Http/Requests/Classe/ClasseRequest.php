@@ -24,7 +24,7 @@ class ClasseRequest extends FormRequest
        $rules = [
             'nom' => 'required|string|max:255',
             'niveau' => 'required|string|max:255',
-            'filiere' => 'required|in:Genie Logiciel,Reseaux et systeme,Intelligence Artificielle,Ingénierie de Données,Gestion',
+            'filiere' => 'required|in:Genie Logiciel,Reseaux et Systeme,Intelligence Artificielle,Ingénierie de Données, Informatique Appliquée a la Gestion des Entreprises',
             'anneeacademique' => 'required|integer',
         ];
 
