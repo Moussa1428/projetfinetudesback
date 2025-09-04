@@ -69,8 +69,6 @@ class ClasseController extends Controller
         return response()->json($result);
     }
 
-
-
     public function store(ClasseRequest $request)
     {
         $data = $request->validated();

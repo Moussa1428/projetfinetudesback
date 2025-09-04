@@ -16,9 +16,29 @@ class EtudiantController extends Controller
 {
     public function index()
     {
-        $etudiants = Etudiant::with(['user.roles', 'classe'])->get();
-        Log::info('Liste des étudiants récupérée', ['count' => $etudiants->count()]);
-        return response()->json($etudiants, 200);
+        $user = Auth::user();
+
+        if ($user->hasRole('Assistant')) {
+            // Récupérer les classes créées par l'assistant
+            $classes = Classe::where('created_by', $user->id)->pluck('id');
+
+            $etudiants = Etudiant::with('user', 'classe')
+                ->whereIn('classe_id', $classes)
+                ->get();
+        } elseif ($user->hasRole('Etudiant')) {
+            $etudiant = $user->etudiant;
+            if (!$etudiant) {
+                return response()->json(['message' => 'Aucun étudiant associé'], 404);
+            }
+
+            $etudiants = Etudiant::with('user', 'classe')
+                ->where('id', $etudiant->id)
+                ->get();
+        } else {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        return response()->json($etudiants);
     }
 
     // Affiche un étudiant
