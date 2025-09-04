@@ -17,13 +17,13 @@ class ClasseController extends Controller
 
         if ($user->hasRole('Assistant')) {
             // L'assistant voit uniquement les classes qu’il a créées
-            $classes = Classe::with('etudiants.user')
+            $classes = Classe::with(['etudiants.user'])
                 ->where('created_by', $user->id)
                 ->get();
         } elseif ($user->hasRole('Administrateur')) {
             // L’admin voit les classes créées par ses assistants
             $assistantIds = $user->assistants()->pluck('user_id');
-            $classes = Classe::with('etudiants.user')
+            $classes = Classe::with(['etudiants.user'])
                 ->whereIn('created_by', $assistantIds)
                 ->get();
         } elseif ($user->hasRole('Etudiant')) {
@@ -33,15 +33,42 @@ class ClasseController extends Controller
                 return response()->json(['message' => 'Aucune classe associée'], 404);
             }
 
-            $classes = Classe::with('etudiants.user')
+            $classes = Classe::with(['etudiants.user'])
                 ->where('id', $etudiant->classe_id)
                 ->get();
         } else {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
-        return response()->json($classes);
+        // Transformer pour afficher chaque classe avec sa liste d'étudiants
+        $result = $classes->map(function ($classe) {
+            return [
+                'id' => $classe->id,
+                'nom' => $classe->nom,
+                'niveau' => $classe->niveau,
+                'filiere' => $classe->filiere,
+                'anneeacademique' => $classe->anneeacademique,
+                'code' => $classe->code,
+                'status' => $classe->status,
+                'created_by' => $classe->created_by,
+                'responsable_id' => $classe->responsable_id,
+                'etudiants' => $classe->etudiants->map(function ($etudiant) {
+                    return [
+                        'id' => $etudiant->id,
+                        'matricule' => $etudiant->matricule,
+                        'user' => [
+                            'id' => $etudiant->user->id,
+                            'name' => $etudiant->user->name,
+                            'email' => $etudiant->user->email,
+                        ]
+                    ];
+                })
+            ];
+        });
+
+        return response()->json($result);
     }
+
 
 
     public function store(ClasseRequest $request)
