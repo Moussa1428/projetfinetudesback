@@ -16,6 +16,7 @@ class Groupe extends Model
         'description',
         'responsable_id',
         'created_by',
+        'is_active'
     ];
 
     // Responsable (Admin ou Assistant)

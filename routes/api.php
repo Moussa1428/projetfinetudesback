@@ -9,23 +9,30 @@ use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::post('login', [AuthController::class, 'login']);
+Route::post('login', [AuthController::class, 'login'])->name('login');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 
-    // gestion des assistants
+    // gestion des assistants par  admin qui fait gestion des assistants cbgererfini
     Route::get('assistants/users', [UserController::class, 'index']);
     Route::post('assistants/users', [UserController::class, 'store']);
     Route::get('assistants/users/{id}', [UserController::class, 'show']);
     Route::put('assistants/users/{id}', [UserController::class, 'update']);
     Route::delete('assistants/users/{id}', [UserController::class, 'destroy']);
 
-    //1 gestion des administrateurs
+
+
+
+    //1 gestion des administrateurs super admin qui fait gestion des administrateurs cbgererfini
     Route::get('/administrateurs', [AdminController::class, 'index']);
     Route::post('/administrateurs', [AdminController::class, 'store']);
     Route::get('/administrateurs/{id}', [AdminController::class, 'show']);
     Route::put('/administrateurs/{id}', [AdminController::class, 'update']);
     Route::delete('/administrateurs/{id}', [AdminController::class, 'destroy']);
+    Route::put('administrateurs/{id}/toggle-active', [AdminController::class, 'toggleActive']);
+
+
 
     //gestion des etudiants
     Route::get('etudiants', [EtudiantController::class, 'index']); // Crée un ou plusieurs étudiants
@@ -34,12 +41,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']); // Supprime un étudiant
     Route::delete('etudiants/{etudiant}', [EtudiantController::class, 'destroy']);
 
-    //gestion des groupes
+    //gestion des groupes par assistant et admin qui fait gestion des groupes cbgererfini pour admin reste à faire pour assistant
     Route::get('/groupes', [GroupeController::class, 'index']);
     Route::post('/groupes', [GroupeController::class, 'store']);
     Route::get('/groupes/{id}', [GroupeController::class, 'show']);
     Route::put('/groupes/{id}', [GroupeController::class, 'update']);
     Route::delete('/groupes/{id}', [GroupeController::class, 'destroy']);
+    Route::patch('groupes/{id}/toggle-active', [GroupeController::class, 'toggleActive']);
+
 
     Route::post('/groupes/{id}/membres', [GroupeController::class, 'addMembre']);
     Route::delete('/groupes/{id}/membres/{user_id}', [GroupeController::class, 'removeMembre']);

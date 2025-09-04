@@ -18,6 +18,11 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        if (!$user->is_active) {
+            return response()->json([
+                'message' => 'Votre compte est désactivé. Veuillez contacter votre supérieur pour l’activer.'
+            ], 403);
+        }
         $token = $user->createToken('api_token')->plainTextToken;
 
         return response()->json([
@@ -27,7 +32,7 @@ class AuthController extends Controller
         ]);
     }
 
-   public function logout(Request $request)
+    public function logout(Request $request)
     {
         // Supprime uniquement le token courant
         $request->user()->currentAccessToken()->delete();

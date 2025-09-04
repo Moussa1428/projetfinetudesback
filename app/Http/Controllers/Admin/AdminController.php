@@ -22,8 +22,8 @@ class AdminController extends Controller
      */
     private function checkSuperAdmin()
     {
-        $user = auth()->user(); // Utilisateur connecté
-        if (!$user || !$user->hasRole('Super_Admin')) {
+        $user = auth('sanctum')->user(); // Utilisateur connecté
+        if (!$user || !auth('sanctum')->user()->hasRole('Super_Admin')) {
             abort(403, 'Accès refusé. Rôle Super_Admin requis.');
         }
     }
@@ -93,8 +93,6 @@ class AdminController extends Controller
      */
     public function update(RequestUser $request, $id)
     {
-        $this->checkSuperAdmin();
-
         try {
             $data = $request->validated();
             Log::info('Données validées pour update Administrateur:', $data);
@@ -143,5 +141,37 @@ class AdminController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'Administrateur supprimé avec succès']);
+    }
+
+    /**
+     * Active ou désactive un administrateur
+     */
+    public function toggleActive(string $id)
+    {
+        $this->checkSuperAdmin(); // Vérifie que l'utilisateur connecté est Super_Admin
+
+        $user = User::role('Administrateur')->find($id);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Administrateur non trouvé.'
+            ], 404);
+        }
+
+        // Empêche de désactiver soi-même si nécessaire
+        $superAdmin = auth('sanctum')->user();
+        if ($user->id === $superAdmin->id) {
+            return response()->json([
+                'message' => 'Impossible de désactiver votre propre compte.'
+            ], 403);
+        }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        return response()->json([
+            'message' => $user->is_active ? 'Administrateur activé.' : 'Administrateur désactivé.',
+            'user' => $user->load('roles'),
+        ]);
     }
 }

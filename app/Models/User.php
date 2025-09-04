@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -85,5 +86,18 @@ class User extends Authenticatable
         return $this->belongsToMany(Groupe::class, 'groupe_user')
             ->withPivot('role_in_groupe')
             ->withTimestamps();
+    }
+
+    public function groupes()
+    {
+        return $this->belongsToMany(Groupe::class, 'groupe_user')
+            ->withPivot('role_in_groupe')
+            ->withTimestamps();
+    }
+
+    public function assistants(): HasMany
+    {
+        return $this->hasMany(Assistant::class, 'admin_id');
+        // 'admin_id' est la colonne dans la table assistants qui référence l'id du user (administrateur)
     }
 }
