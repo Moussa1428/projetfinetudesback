@@ -9,6 +9,7 @@ use App\Models\Classe;
 use App\Models\Etudiant;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -42,12 +43,18 @@ class EtudiantController extends Controller
     }
 
     // Affiche un étudiant
-    public function show($etudiant)
+    public function show($userId)
     {
-        $etudiant = Etudiant::with(['user.roles', 'classe'])->findOrFail($etudiant);
+        $etudiant = Etudiant::with(['user.roles', 'classe'])
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$etudiant) {
+            return response()->json(['message' => 'Étudiant non trouvé'], 404);
+        }
+
         return response()->json($etudiant, 200);
     }
-
     // Crée un étudiant
     public function store(RequestUser $requestUser, EtudiantRequest $requestEtudiant)
     {
@@ -55,7 +62,7 @@ class EtudiantController extends Controller
             $dataUser = $requestUser->validated();
             $dataUser['password'] = Hash::make('passer123');
 
-            // Vérification unique email et phone
+            // Vérification email & phone uniques
             if (User::where('email', $dataUser['email'])->exists()) {
                 return response()->json(['message' => 'Cet email est déjà utilisé.'], 422);
             }
@@ -63,19 +70,22 @@ class EtudiantController extends Controller
                 return response()->json(['message' => 'Ce numéro de téléphone est déjà utilisé.'], 422);
             }
 
+            // Création User
             $user = User::create($dataUser);
             $user->assignRole('Etudiant');
 
+            // Récupération classe
             $classe = Classe::findOrFail($requestEtudiant->classe_id);
-            $totalEtudiants = Etudiant::count() + 1;
-            $numeroClasse = Etudiant::where('classe_id', $classe->id)->count() + 1;
+
+            // Génération du matricule
+            $totalEtudiants = Etudiant::count() + 1; // numéro global
+            $numeroClasse = Etudiant::where('classe_id', $classe->id)->count() + 1; // numéro dans la classe
             $matricule = $totalEtudiants . '-' . $classe->anneeacademique . '-' . $numeroClasse . '/ISI';
 
+            // Création étudiant
             $dataEtudiant = $requestEtudiant->validated();
             $dataEtudiant['matricule'] = $matricule;
             $etudiant = $user->etudiant()->create($dataEtudiant);
-
-            Log::info('Étudiant créé', ['user_id' => $user->id, 'etudiant_id' => $etudiant->id, 'matricule' => $matricule]);
 
             return response()->json([
                 'message' => 'Étudiant créé avec succès',
@@ -86,70 +96,62 @@ class EtudiantController extends Controller
         }
     }
 
+
     // Met à jour un étudiant
-    public function update(RequestUser $requestUser, EtudiantRequest $requestEtudiant, $etudiant)
+    public function update(RequestUser $requestUser, $userId)
     {
         try {
-            $etudiant = Etudiant::with('user')->findOrFail($etudiant);
-            $userId = $etudiant->user->id;
+            // Trouver l'étudiant via son user_id
+            $etudiant = Etudiant::with('user')->where('user_id', $userId)->firstOrFail();
+            $user = $etudiant->user;
 
             $dataUser = array_filter($requestUser->validated(), fn($v) => $v !== null);
 
-            // Validation unique
-            if (isset($dataUser['email']) && User::where('email', $dataUser['email'])->where('id', '!=', $userId)->exists()) {
+            // Validation unique email et phone
+            if (isset($dataUser['email']) && User::where('email', $dataUser['email'])->where('id', '!=', $user->id)->exists()) {
                 return response()->json(['message' => 'Cet email est déjà utilisé.'], 422);
             }
-            if (isset($dataUser['phone']) && User::where('phone', $dataUser['phone'])->where('id', '!=', $userId)->exists()) {
+            if (isset($dataUser['phone']) && User::where('phone', $dataUser['phone'])->where('id', '!=', $user->id)->exists()) {
                 return response()->json(['message' => 'Ce numéro de téléphone est déjà utilisé.'], 422);
             }
 
+            // ⚡ On garde toujours passer123 comme mot de passe par défaut
             if (!empty($dataUser['password'])) {
                 $dataUser['password'] = Hash::make($dataUser['password']);
             } else {
                 unset($dataUser['password']);
             }
 
+            // Mise à jour uniquement des infos user
             if (!empty($dataUser)) {
-                $etudiant->user->update($dataUser);
+                $user->update($dataUser);
             }
-
-            $dataEtudiant = array_filter($requestEtudiant->validated(), fn($v) => $v !== null);
-
-            if (isset($dataEtudiant['classe_id']) && $etudiant->classe_id != $dataEtudiant['classe_id']) {
-                $nouvelleClasse = Classe::findOrFail($dataEtudiant['classe_id']);
-                $totalEtudiants = Etudiant::count();
-                $numeroClasse = Etudiant::where('classe_id', $nouvelleClasse->id)->count() + 1;
-                $dataEtudiant['matricule'] = $totalEtudiants . '-' . $nouvelleClasse->anneeacademique . '-' . $numeroClasse . '/ISI';
-            }
-
-            if (!empty($dataEtudiant)) {
-                $etudiant->update($dataEtudiant);
-            }
-
-            Log::info('Étudiant mis à jour', ['etudiant_id' => $etudiant->id, 'user_id' => $userId]);
 
             return response()->json([
-                'message' => 'Étudiant mis à jour avec succès',
+                'message' => 'Informations de l’étudiant mises à jour avec succès',
                 'etudiant' => $etudiant->load(['user.roles', 'classe'])
             ], 200);
-
         } catch (\Exception $e) {
-            Log::error('Erreur mise à jour Étudiant', ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-    // Supprime un étudiant
-    public function destroy($etudiant)
+    // Activer/Désactiver un étudiant
+    public function toggleActive($userId)
     {
         try {
-            $etudiant = Etudiant::with('user')->findOrFail($etudiant);
-            $etudiant->user->delete(); // Supprime aussi l’utilisateur
-            $etudiant->delete();
+            $etudiant = Etudiant::with('user')->where('user_id', $userId)->firstOrFail();
+            $user = $etudiant->user;
 
-            Log::info('Étudiant supprimé', ['etudiant_id' => $etudiant->id]);
+            $user->is_active = !$user->is_active;
+            $user->save();
 
-            return response()->json(['message' => 'Étudiant supprimé avec succès'], 200);
+            Log::info('Statut étudiant changé', ['user_id' => $userId, 'is_active' => $user->is_active]);
+
+            return response()->json([
+                'message' => $user->is_active ? 'Étudiant activé' : 'Étudiant désactivé',
+                'etudiant' => $etudiant->load(['user.roles', 'classe'])
+            ], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

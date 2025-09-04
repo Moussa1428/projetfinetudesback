@@ -59,7 +59,10 @@ class ClasseController extends Controller
                         'user' => [
                             'id' => $etudiant->user->id,
                             'name' => $etudiant->user->name,
+                            'last_name' => $etudiant->user->last_name,
                             'email' => $etudiant->user->email,
+                            'phone' => $etudiant->user->phone,
+                            'is_active' => $etudiant->user->is_active,
                         ]
                     ];
                 })

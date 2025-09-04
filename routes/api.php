@@ -47,8 +47,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('etudiants', [EtudiantController::class, 'index']); // Crée un ou plusieurs étudiants
     Route::post('etudiants', [EtudiantController::class, 'store']); // Affiche un étudiant
     Route::get('etudiants/{etudiant}', [EtudiantController::class, 'show']); // Met à jour un étudiant
-    Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']); // Supprime un étudiant
-    Route::delete('etudiants/{etudiant}', [EtudiantController::class, 'destroy']);
+    Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']);
+    Route::put('etudiants/{etudiant}/toggle-active', [EtudiantController::class, 'toggleActive']);
+
+
 
     //3 gestion des groupes par assistant et admin qui fait gestion des groupes cbgererfini pour admin reste à faire pour assistant
     Route::get('/groupes', [GroupeController::class, 'index']);
