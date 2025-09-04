@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Assistant\ClasseController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Enseignant\EnseignantController;
 use App\Http\Controllers\Etudiant\EtudiantController;
 use App\Http\Controllers\Groupe\GroupeController;
 use App\Http\Controllers\UserController;
@@ -14,14 +15,22 @@ Route::post('login', [AuthController::class, 'login'])->name('login');
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 
-    // gestion des assistants par  admin qui fait gestion des assistants cbgererfini
+    Route::get('classes', [ClasseController::class, 'index']);
+    // Route::post('classes', [ClasseController::class, 'store']);
+    Route::post('classes', [ClasseController::class, 'storeclasse']);
+    Route::get('classes/{classe}', [ClasseController::class, 'show']);
+    Route::put('classes/{classe}', [ClasseController::class, 'update']);
+    Route::delete('classes/{classe}', [ClasseController::class, 'destroy']);
+    Route::put('classes/{classe}/toggle-status', [ClasseController::class, 'toggleStatus']);
+
+
+
+    //2 gestion des assistants par  admin qui fait gestion des assistants cbgererfini
     Route::get('assistants/users', [UserController::class, 'index']);
     Route::post('assistants/users', [UserController::class, 'store']);
     Route::get('assistants/users/{id}', [UserController::class, 'show']);
     Route::put('assistants/users/{id}', [UserController::class, 'update']);
     Route::delete('assistants/users/{id}', [UserController::class, 'destroy']);
-
-
 
 
     //1 gestion des administrateurs super admin qui fait gestion des administrateurs cbgererfini
@@ -41,17 +50,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']); // Supprime un étudiant
     Route::delete('etudiants/{etudiant}', [EtudiantController::class, 'destroy']);
 
-    //gestion des groupes par assistant et admin qui fait gestion des groupes cbgererfini pour admin reste à faire pour assistant
+    //3 gestion des groupes par assistant et admin qui fait gestion des groupes cbgererfini pour admin reste à faire pour assistant
     Route::get('/groupes', [GroupeController::class, 'index']);
     Route::post('/groupes', [GroupeController::class, 'store']);
     Route::get('/groupes/{id}', [GroupeController::class, 'show']);
     Route::put('/groupes/{id}', [GroupeController::class, 'update']);
     Route::delete('/groupes/{id}', [GroupeController::class, 'destroy']);
     Route::patch('groupes/{id}/toggle-active', [GroupeController::class, 'toggleActive']);
-
-
     Route::post('/groupes/{id}/membres', [GroupeController::class, 'addMembre']);
     Route::delete('/groupes/{id}/membres/{user_id}', [GroupeController::class, 'removeMembre']);
+
+
+    //4 gestion des enseignants par admin et assistant
+    Route::get('enseignants', [EnseignantController::class, 'index']);
+    Route::post('enseignants', [EnseignantController::class, 'store']);
+    Route::get('enseignants/{id}', [EnseignantController::class, 'show']);
+    Route::put('enseignants/{id}', [EnseignantController::class, 'update']);
+    Route::delete('enseignants/{id}', [EnseignantController::class, 'destroy']);
+    Route::put('enseignants/{id}/toggle-active', [EnseignantController::class, 'toggleActive']);
+
 });
 
 // // gestion des assistants

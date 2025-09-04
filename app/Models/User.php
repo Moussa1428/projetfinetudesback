@@ -62,6 +62,13 @@ class User extends Authenticatable
     {
         return $this->hasOne(Assistant::class);
     }
+
+    // User.php
+    public function assistantforgroupe()
+    {
+        return $this->hasOne(Assistant::class, 'user_id');
+    }
+
     public function enseignant()
     {
         return $this->hasOne(Enseignant::class);

@@ -20,15 +20,15 @@ class GroupeController extends Controller
             $groupes = Groupe::with(['responsable.roles', 'createur.roles', 'membres.roles'])->get();
         } elseif ($user->hasRole('Administrateur')) {
             // Admin → ses groupes + ceux créés par ses assistants
-            $assistantIds = $user->assistants()->pluck('user_id'); // relation assistants
             $groupes = Groupe::with(['responsable.roles', 'createur.roles', 'membres.roles'])
-                ->where('created_by', $user->id)
-                ->orWhereIn('created_by', $assistantIds)
-                ->get();
+            ->where('created_by', $user->id)
+            ->orWhere('responsable_id', $user->id)
+            ->get();
         } elseif ($user->hasRole('Assistant')) {
             // Assistant → uniquement ses groupes
             $groupes = Groupe::with(['responsable.roles', 'createur.roles', 'membres.roles'])
                 ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
                 ->get();
         } else {
             // Étudiant → uniquement ses groupes
@@ -57,13 +57,27 @@ class GroupeController extends Controller
             'responsable_id' => 'nullable|exists:users,id',
         ]);
 
+        if ($user->hasRole('Assistant') && empty($request->responsable_id)) {
+            $assistant = $user->assistantforgroupe; // récupère la ligne de la table assistants
+            if ($assistant && $assistant->admin) {
+                // récupère l'id du user administrateur réel
+                $responsableId = $assistant->admin->user_id;
+            } else {
+                return response()->json(['message' => 'Aucun administrateur associé à cet assistant'], 400);
+            }
+        } else {
+            $responsableId = $request->responsable_id;
+        }
+
         $groupe = Groupe::create([
             'nom' => $request->nom,
             'annee' => $request->annee,
             'description' => $request->description,
-            'responsable_id' => $request->responsable_id,
+            'responsable_id' => $responsableId,
             'created_by' => $user->id,
         ]);
+
+
 
         return response()->json($groupe, 201);
     }
@@ -123,7 +137,7 @@ class GroupeController extends Controller
         $groupe = Groupe::findOrFail($id);
 
         // Seul le créateur ou le responsable peut ajouter un membre
-        if ($user->id !== $groupe->created_by && $user->id !== $groupe->responsable_id && !$user->hasRole('Super_Admin')) {
+        if ($user->id !== $groupe->created_by && $user->id !== $groupe->responsable_id) {
             return response()->json(['message' => 'Non autorisé à ajouter des membres'], 403);
         }
 
@@ -131,25 +145,25 @@ class GroupeController extends Controller
             'user_id' => 'required|exists:users,id'
         ]);
 
+        $membre = User::findOrFail($request->user_id);
+
         // Vérifie si le membre est déjà dans le groupe
-        if ($groupe->membres()->where('user_id', $request->user_id)->exists()) {
+        if ($groupe->membres()->where('user_id', $membre->id)->exists()) {
             return response()->json(['message' => 'Cet utilisateur est déjà membre du groupe.'], 400);
         }
 
-        // Récupère le rôle principal de l'utilisateur à ajouter
-        $membre = User::findOrFail($request->user_id);
-        $role_in_groupe = $membre->roles->pluck('name')->first(); // on prend le premier rôle
-
-        if ($groupe->membres()->where('user_id', $membre->id)->exists()) {
-            return response()->json(['message' => 'Utilisateur déjà membre'], 400);
-        }
+        // Récupère le rôle principal de l'utilisateur
+        $role_in_groupe = $membre->roles->pluck('name')->first();
 
         // Ajoute le membre dans le groupe avec son rôle
         $groupe->membres()->attach($membre->id, [
             'role_in_groupe' => $role_in_groupe
         ]);
 
-        return response()->json(['message' => 'Membre ajouté avec succès', 'role_in_groupe' => $role_in_groupe]);
+        return response()->json([
+            'message' => 'Membre ajouté avec succès',
+            'role_in_groupe' => $role_in_groupe
+        ]);
     }
 
     // Retirer membre
