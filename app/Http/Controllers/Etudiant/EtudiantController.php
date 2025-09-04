@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Etudiant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Etudiant\EtudiantRequest;
 use App\Http\Requests\RequestUser;
+use App\Mail\CreationEtudiantMail;
 use App\Models\Classe;
 use App\Models\Etudiant;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class EtudiantController extends Controller
 {
@@ -20,20 +22,39 @@ class EtudiantController extends Controller
         $user = Auth::user();
 
         if ($user->hasRole('Assistant')) {
-            // Récupérer les classes créées par l'assistant
-            $classes = Classe::where('created_by', $user->id)->pluck('id');
+            // L'assistant voit les classes qu'il a créées ou dont il est responsable
+            $classes = Classe::with('etudiants.user')
+                ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
+                ->get();
 
+            // Récupérer tous les étudiants de ces classes
             $etudiants = Etudiant::with('user', 'classe')
-                ->whereIn('classe_id', $classes)
+                ->whereIn('classe_id', $classes->pluck('id'))
+                ->get();
+        } elseif ($user->hasRole('Administrateur')) {
+            // Récupérer tous les assistants liés à cet administrateur
+            $assistantUserIds = $user->assistantslieraadministrateur()->pluck('user_id');
+
+            // Les classes dont l'admin est responsable (via ses assistants)
+            $classes = Classe::with('etudiants.user')
+                ->whereIn('created_by', $assistantUserIds)
+                ->orWhere('responsable_id', $user->id)
+                ->get();
+
+            // Récupérer tous les étudiants de ces classes
+            $etudiants = Etudiant::with('user', 'classe')
+                ->whereIn('classe_id', $classes->pluck('id'))
                 ->get();
         } elseif ($user->hasRole('Etudiant')) {
+            // L'étudiant voit uniquement sa classe et les autres étudiants de cette classe
             $etudiant = $user->etudiant;
             if (!$etudiant) {
                 return response()->json(['message' => 'Aucun étudiant associé'], 404);
             }
 
             $etudiants = Etudiant::with('user', 'classe')
-                ->where('id', $etudiant->id)
+                ->where('classe_id', $etudiant->classe_id)
                 ->get();
         } else {
             return response()->json(['message' => 'Non autorisé'], 403);
@@ -41,6 +62,7 @@ class EtudiantController extends Controller
 
         return response()->json($etudiants);
     }
+
 
     // Affiche un étudiant
     public function show($userId)
@@ -60,7 +82,10 @@ class EtudiantController extends Controller
     {
         try {
             $dataUser = $requestUser->validated();
-            $dataUser['password'] = Hash::make('passer123');
+
+            // Générer un mot de passe aléatoire de 8 caractères
+            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $dataUser['password'] = Hash::make($password);
 
             // Vérification email & phone uniques
             if (User::where('email', $dataUser['email'])->exists()) {
@@ -72,20 +97,29 @@ class EtudiantController extends Controller
 
             // Création User
             $user = User::create($dataUser);
+
+            // Assigner le rôle Etudiant
             $user->assignRole('Etudiant');
 
             // Récupération classe
             $classe = Classe::findOrFail($requestEtudiant->classe_id);
 
             // Génération du matricule
-            $totalEtudiants = Etudiant::count() + 1; // numéro global
-            $numeroClasse = Etudiant::where('classe_id', $classe->id)->count() + 1; // numéro dans la classe
+            $dernierEtudiant = $classe->etudiants()->orderBy('id', 'desc')->first();
+            $numeroClasse = $dernierEtudiant
+                ? ((int) explode('-', $dernierEtudiant->matricule)[2]) + 1
+                : 1;
+
+            $totalEtudiants = Etudiant::count() + 1;
             $matricule = $totalEtudiants . '-' . $classe->anneeacademique . '-' . $numeroClasse . '/ISI';
 
             // Création étudiant
             $dataEtudiant = $requestEtudiant->validated();
             $dataEtudiant['matricule'] = $matricule;
             $etudiant = $user->etudiant()->create($dataEtudiant);
+
+            // Envoi du mail avec identifiants
+            Mail::to($user->email)->send(new CreationEtudiantMail($user->name, $user->email, $password));
 
             return response()->json([
                 'message' => 'Étudiant créé avec succès',
@@ -95,7 +129,6 @@ class EtudiantController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
 
     // Met à jour un étudiant
     public function update(RequestUser $requestUser, $userId)

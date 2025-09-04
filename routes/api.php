@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Enseignant\EnseignantController;
 use App\Http\Controllers\Etudiant\EtudiantController;
 use App\Http\Controllers\Groupe\GroupeController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('classes/{classe}', [ClasseController::class, 'show']);
     Route::put('classes/{classe}', [ClasseController::class, 'update']);
     Route::delete('classes/{classe}', [ClasseController::class, 'destroy']);
+    Route::post('etudiants/import', [ImportController::class, 'importEtudiant']);
+    Route::post('classes/import-etudiants', [ImportController::class, 'importEtudiantCreationClasse']);
     Route::put('classes/{classe}/toggle-status', [ClasseController::class, 'toggleStatus']);
 
 
@@ -45,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     //gestion des etudiants
     Route::get('etudiants', [EtudiantController::class, 'index']); // Crée un ou plusieurs étudiants
-    Route::post('etudiants', [EtudiantController::class, 'store']); // Affiche un étudiant
+    Route::post('etudiants', [EtudiantController::class, 'store']);
     Route::get('etudiants/{etudiant}', [EtudiantController::class, 'show']); // Met à jour un étudiant
     Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']);
     Route::put('etudiants/{etudiant}/toggle-active', [EtudiantController::class, 'toggleActive']);

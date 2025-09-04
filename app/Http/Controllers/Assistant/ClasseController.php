@@ -16,18 +16,19 @@ class ClasseController extends Controller
         $user = Auth::user();
 
         if ($user->hasRole('Assistant')) {
-            // L'assistant voit uniquement les classes qu’il a créées
+            // L'assistant voit toutes les classes qu’il a créées ou dont il est responsable
             $classes = Classe::with(['etudiants.user'])
                 ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
                 ->get();
         } elseif ($user->hasRole('Administrateur')) {
-            // L’admin voit les classes créées par ses assistants
-            $assistantIds = $user->assistants()->pluck('user_id');
+            // L’admin voit toutes les classes qu’il a créées ou dont il est responsable
             $classes = Classe::with(['etudiants.user'])
-                ->whereIn('created_by', $assistantIds)
+                ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
                 ->get();
         } elseif ($user->hasRole('Etudiant')) {
-            // L’étudiant voit uniquement sa classe
+            // L’étudiant voit uniquement sa classe et tous les étudiants de cette classe
             $etudiant = $user->etudiant;
             if (!$etudiant) {
                 return response()->json(['message' => 'Aucune classe associée'], 404);
@@ -40,7 +41,7 @@ class ClasseController extends Controller
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
-        // Transformer pour afficher chaque classe avec sa liste d'étudiants
+        // Transformer les données pour renvoyer chaque classe avec sa liste d'étudiants
         $result = $classes->map(function ($classe) {
             return [
                 'id' => $classe->id,
@@ -71,6 +72,7 @@ class ClasseController extends Controller
 
         return response()->json($result);
     }
+
 
     public function store(ClasseRequest $request)
     {

@@ -107,4 +107,10 @@ class User extends Authenticatable
         return $this->hasMany(Assistant::class, 'admin_id');
         // 'admin_id' est la colonne dans la table assistants qui référence l'id du user (administrateur)
     }
+
+    public function assistantslieraadministrateur()
+    {
+        // récupère les assistants liés à cet administrateur
+        return $this->hasMany(Assistant::class, 'admin_id', 'id');
+    }
 }
