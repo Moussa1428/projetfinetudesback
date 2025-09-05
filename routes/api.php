@@ -7,6 +7,7 @@ use App\Http\Controllers\Enseignant\EnseignantController;
 use App\Http\Controllers\Etudiant\EtudiantController;
 use App\Http\Controllers\Groupe\GroupeController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\NotificationAPI\NotificationController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +74,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('enseignants/{id}', [EnseignantController::class, 'update']);
     Route::delete('enseignants/{id}', [EnseignantController::class, 'destroy']);
     Route::put('enseignants/{id}/toggle-active', [EnseignantController::class, 'toggleActive']);
+
+
+    Route::post('/notifications/send', [NotificationController::class, 'send']);
+    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
 
 });
 
