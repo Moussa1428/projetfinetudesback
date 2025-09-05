@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('notifications', function (Blueprint $table) {
-            //
+            $table->timestamp('scheduled_at')->nullable()->after('message');
+            $table->boolean('is_sent')->default(false)->after('scheduled_at');
         });
     }
 
@@ -22,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('notifications', function (Blueprint $table) {
-            //
+            $table->dropColumn(['scheduled_at', 'is_sent']);
         });
     }
 };

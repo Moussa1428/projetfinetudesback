@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NotificationMail extends Mailable
+class NotificationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -22,32 +22,18 @@ class NotificationMail extends Mailable
     {
         $this->notification = $notification;
     }
-
-    /**
-     * Get the message envelope.
-     */
-    // public function envelope(): Envelope
-    // {
-    //     return new Envelope(
-    //         subject: 'Notification Mail',
-    //     );
-    // }
-
-    public function build()
+    public function envelope(): Envelope
     {
-        return $this->subject('Nouvelle Notification')
-                    ->view('emails.notification');
+        return new Envelope(
+            subject: 'Nouvelle Notification',
+        );
     }
-
-    /**
-     * Get the message content definition.
-     */
-    // public function content(): Content
-    // {
-    //     return new Content(
-    //         view: 'view.name',
-    //     );
-    // }
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.notification',
+        );
+    }
 
     /**
      * Get the attachments for the message.

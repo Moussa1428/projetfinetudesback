@@ -4,12 +4,14 @@ namespace App\Http\Controllers\NotificationAPI;
 
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Mail\NotificationMail;
 use App\Models\Etudiant;
 use App\Models\Groupe;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class NotificationController extends Controller
@@ -20,33 +22,48 @@ class NotificationController extends Controller
     public function send(Request $request)
     {
         $request->validate([
-            'target_type' => 'required|string|in:Classe,Groupe,Enseignant,Assistant,Administrateur',
-            'target_id'   => 'nullable|integer',
-            'message'     => 'required|string|max:1000',
+            'target_type'  => 'required|string|in:Classe,Groupe,Enseignant,Assistant,Administrateur',
+            'target_id'    => 'nullable|integer',
+            'message'      => 'required|string|max:1000',
+            'scheduled_at' => 'nullable|date|after:now',
         ]);
 
         $user = Auth::user();
 
-        // Création de la notification
         $notification = Notification::create([
             'sender_id'   => $user->id,
             'target_type' => $request->target_type,
             'target_id'   => $request->target_id,
             'message'     => $request->message,
+            'scheduled_at' => $request->scheduled_at,
         ]);
 
-        // Diffusion via Pusher
-        broadcast(new NotificationSent($notification))->toOthers();
-
-        // Si c’est un Admin → envoyer aussi par email
-        if ($user->hasRole('Administrateur')) {
-            $this->sendEmailNotification($notification);
+        // ⚡️ Si pas de programmation → envoi immédiat
+        if (!$notification->scheduled_at) {
+            $this->dispatchNotification($notification);
         }
 
         return response()->json([
-            'message' => 'Notification envoyée',
-            'data'    => $notification,
+            'message' => $notification->scheduled_at
+                ? 'Notification programmée'
+                : 'Notification envoyée',
+            'data' => $notification
         ]);
+    }
+
+    public function dispatchNotification(Notification $notification)
+    {
+        // Envoi push via Pusher
+        broadcast(new NotificationSent($notification))->toOthers();
+
+        // Si Admin -> envoie email
+        $user = $notification->sender;
+        if ($user && $user->hasRole('Administrateur')) {
+            $this->sendEmailNotification($notification);
+        }
+
+        // Marque comme envoyée (si tu as ajouté une colonne is_sent)
+        $notification->update(['is_sent' => true]);
     }
 
     /**
@@ -76,11 +93,21 @@ class NotificationController extends Controller
 
         foreach ($users as $user) {
             if ($user && $user->email) {
-                Mail::to($user->email)
-                    ->queue(new \App\Mail\NotificationMail($notification));
+                Log::info("📧 Envoi d'email à : {$user->email} pour la notif #{$notification->id}");
+
+                try {
+                    Mail::to($user->email)
+                        ->send(new NotificationMail($notification)); // send direct
+                    Log::info("✅ Mail envoyé à {$user->email}");
+                } catch (\Throwable $e) {
+                    Log::error("❌ Erreur envoi mail à {$user->email} : " . $e->getMessage());
+                }
+            } else {
+                Log::warning("⚠️ Aucun email trouvé pour user lié à notif #{$notification->id}");
             }
         }
     }
+
 
     /**
      * 📌 Récupérer les notifications
