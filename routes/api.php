@@ -18,7 +18,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 
     Route::get('classes', [ClasseController::class, 'index']);
-    // Route::post('classes', [ClasseController::class, 'store']);
     Route::post('classes', [ClasseController::class, 'storeclasse']);
     Route::get('classes/{classe}', [ClasseController::class, 'show']);
     Route::put('classes/{classe}', [ClasseController::class, 'update']);
@@ -35,6 +34,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('assistants/users/{id}', [UserController::class, 'show']);
     Route::put('assistants/users/{id}', [UserController::class, 'update']);
     Route::delete('assistants/users/{id}', [UserController::class, 'destroy']);
+    Route::put('assistants/users/{id}/toggle', [UserController::class, 'toggleAssistant']);
+    Route::get('/users/responsables', [UserController::class, 'responsables']);
+
 
 
     //1 gestion des administrateurs super admin qui fait gestion des administrateurs cbgererfini
@@ -48,9 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     //gestion des etudiants
-    Route::get('etudiants', [EtudiantController::class, 'index']); // Crée un ou plusieurs étudiants
+    Route::get('etudiants', [EtudiantController::class, 'index']);
     Route::post('etudiants', [EtudiantController::class, 'store']);
-    Route::get('etudiants/{etudiant}', [EtudiantController::class, 'show']); // Met à jour un étudiant
+    Route::get('etudiants/{etudiant}', [EtudiantController::class, 'show']);
     Route::put('etudiants/{etudiant}', [EtudiantController::class, 'update']);
     Route::put('etudiants/{etudiant}/toggle-active', [EtudiantController::class, 'toggleActive']);
 

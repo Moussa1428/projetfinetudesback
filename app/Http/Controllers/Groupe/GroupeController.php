@@ -201,4 +201,5 @@ class GroupeController extends Controller
             'is_active' => $groupe->is_active
         ]);
     }
+
 }

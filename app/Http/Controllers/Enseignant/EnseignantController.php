@@ -48,7 +48,8 @@ class EnseignantController extends Controller
             }
 
             // Générer un mot de passe aléatoire si non fourni
-            $password = $data['password'] ?? substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            // $password = $data['password'] ?? substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = 'passer123';
             $data['password'] = Hash::make($password);
 
             $user = User::create($data);

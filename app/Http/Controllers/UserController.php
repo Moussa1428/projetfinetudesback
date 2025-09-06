@@ -54,7 +54,8 @@ class UserController extends Controller
             $data = $request->validated();
             Log::info('Data reçue:', $data);
 
-            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            // $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = 'passer123';
             $data['password'] = Hash::make($password);
             $user = User::create($data);
             $user->assignRole('Assistant');
@@ -155,5 +156,69 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'Assistant supprimé avec succès']);
+    }
+
+    public function toggleAssistant(string $id)
+    {
+        $this->checkAdmin(); // Vérifie que l'utilisateur connecté est Administrateur
+
+        $user = User::role('Assistant')->find($id);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Assistant non trouvé.'
+            ], 404);
+        }
+
+        // Empêche de désactiver soi-même si nécessaire (optionnel)
+        $currentUser = auth('sanctum')->user();
+        if ($user->id === $currentUser->id) {
+            return response()->json([
+                'message' => 'Impossible de désactiver votre propre compte.'
+            ], 403);
+        }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        return response()->json([
+            'message' => $user->is_active ? 'Assistant activé.' : 'Assistant désactivé.',
+            'user' => $user->load('roles'),
+        ]);
+    }
+
+    public function responsables()
+    {
+        $user = auth()->user();
+
+        // Cas Administrateur => retourne ses assistants (users)
+        if ($user->hasRole('Administrateur')) {
+            $assistants = User::whereHas('assistant', function ($q) use ($user) {
+                $q->where('admin_id', $user->id);
+            })->get(['id', 'name', 'last_name', 'email', 'phone']);
+
+            return response()->json($assistants);
+        }
+
+        // Cas Assistant => retourne son administrateur (user)
+        if ($user->hasRole('Assistant')) {
+            $assistant = $user->assistant()->with('admin.user')->first();
+
+            if ($assistant && $assistant->admin && $assistant->admin->user) {
+                $adminUser = $assistant->admin->user;
+                return response()->json([[
+                    'id'    => $adminUser->id,
+                    'name'  => $adminUser->name,
+                    'last_name' => $adminUser->last_name,
+                    'email' => $adminUser->email,
+                    'phone' => $adminUser->phone,
+                ]]);
+            }
+
+            return response()->json([]);
+        }
+
+        // Autres rôles => retourne vide
+        return response()->json([]);
     }
 }
