@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('classes/{classe}', [ClasseController::class, 'show']);
     Route::put('classes/{classe}', [ClasseController::class, 'update']);
     Route::delete('classes/{classe}', [ClasseController::class, 'destroy']);
+    Route::delete('classes/{classe}/etudiants/{etudiant}', [ClasseController::class, 'removeEtudiant']);
     Route::post('etudiants/import', [ImportController::class, 'importEtudiant']);
     Route::post('classes/import-etudiants', [ImportController::class, 'importEtudiantCreationClasse']);
     Route::put('classes/{classe}/toggle-status', [ClasseController::class, 'toggleStatus']);

@@ -17,13 +17,13 @@ class ClasseController extends Controller
 
         if ($user->hasRole('Assistant')) {
             // L'assistant voit toutes les classes qu’il a créées ou dont il est responsable
-            $classes = Classe::with(['etudiants.user'])
+            $classes = Classe::with(['etudiants.user', 'createur'])
                 ->where('created_by', $user->id)
                 ->orWhere('responsable_id', $user->id)
                 ->get();
         } elseif ($user->hasRole('Administrateur')) {
             // L’admin voit toutes les classes qu’il a créées ou dont il est responsable
-            $classes = Classe::with(['etudiants.user'])
+            $classes = Classe::with(['etudiants.user', 'createur'])
                 ->where('created_by', $user->id)
                 ->orWhere('responsable_id', $user->id)
                 ->get();
@@ -34,7 +34,7 @@ class ClasseController extends Controller
                 return response()->json(['message' => 'Aucune classe associée'], 404);
             }
 
-            $classes = Classe::with(['etudiants.user'])
+            $classes = Classe::with(['etudiants.user', 'createur'])
                 ->where('id', $etudiant->classe_id)
                 ->get();
         } else {
@@ -53,6 +53,11 @@ class ClasseController extends Controller
                 'status' => $classe->status,
                 'created_by' => $classe->created_by,
                 'responsable_id' => $classe->responsable_id,
+                'createur' => $classe->createur ? [
+                    'id' => $classe->createur->id,
+                    'name' => $classe->createur->name,
+                    'last_name' => $classe->createur->last_name,
+                ] : null,
                 'etudiants' => $classe->etudiants->map(function ($etudiant) {
                     return [
                         'id' => $etudiant->id,
@@ -92,6 +97,41 @@ class ClasseController extends Controller
         $classe = Classe::create($data);
 
         return response()->json($classe, 201);
+    }
+
+    public function removeEtudiant($classeId, $etudiantId)
+    {
+
+
+        $user = Auth::user();
+
+        $classe = Classe::with('etudiants.user')->find($classeId);
+        if (!$classe) {
+            return response()->json(['message' => 'Classe non trouvée'], 404);
+        }
+
+        // Seul le créateur de la classe peut retirer un étudiant
+        if ($classe->created_by !== $user->id) {
+            return response()->json(['message' => "Vous n'avez pas l'autorisation de retirer cet étudiant."], 403);
+        }
+
+        // Vérifier que l'étudiant appartient à cette classe
+        $etudiant = $classe->etudiants()->where('id', $etudiantId)->first();
+        if (!$etudiant) {
+            return response()->json(['message' => "Étudiant non trouvé dans cette classe."], 404);
+        }
+
+        $etudiant->classe_id = null;
+        // Retirer de la classe
+
+        // Supprimer l'utilisateur associé
+        $etudiantUser = $etudiant->user;
+        $etudiant->delete(); // supprime l'étudiant
+        if ($etudiantUser) {
+            $etudiantUser->delete(); // supprime le compte utilisateur
+        }
+
+        return response()->json(['message' => 'Étudiant et son compte utilisateur supprimés avec succès'], 200);
     }
 
     public function storeclasse(Request $request)

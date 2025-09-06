@@ -84,7 +84,8 @@ class EtudiantController extends Controller
             $dataUser = $requestUser->validated();
 
             // Générer un mot de passe aléatoire de 8 caractères
-            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            // $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = 'passer123'; // Pour simplifier les tests, on utilise un mot de passe fixe
             $dataUser['password'] = Hash::make($password);
 
             // Vérification email & phone uniques
