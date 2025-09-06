@@ -35,6 +35,17 @@ class Classe extends Model
         return $this->belongsTo(User::class, 'responsable_id');
     }
 
-
-
+    protected static function booted()
+    {
+        static::deleting(function ($classe) {
+            foreach ($classe->etudiants as $etudiant) {
+                // Supprimer le user lié à l'étudiant
+                if ($etudiant->user) {
+                    $etudiant->user->delete();
+                }
+                // Supprimer l'étudiant
+                $etudiant->delete();
+            }
+        });
+    }
 }
