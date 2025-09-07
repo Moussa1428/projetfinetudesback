@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/administrateurs/{id}', [AdminController::class, 'update']);
     Route::delete('/administrateurs/{id}', [AdminController::class, 'destroy']);
     Route::put('administrateurs/{id}/toggle-active', [AdminController::class, 'toggleActive']);
+    Route::get('/users/{id}', [UserController::class, 'getuserfornotif']);
 
 
 

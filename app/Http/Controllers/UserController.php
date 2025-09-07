@@ -54,8 +54,8 @@ class UserController extends Controller
             $data = $request->validated();
             Log::info('Data reçue:', $data);
 
-            // $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
-            $password = 'passer123';
+            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            // $password = 'passer123';
             $data['password'] = Hash::make($password);
             $user = User::create($data);
             $user->assignRole('Assistant');

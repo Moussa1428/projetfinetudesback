@@ -82,8 +82,6 @@ class AdminController extends Controller
      */
     public function show(string $id)
     {
-        $this->checkSuperAdmin();
-
         $user = User::with('roles')->findOrFail($id);
         return response()->json($user);
     }

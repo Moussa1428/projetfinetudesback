@@ -44,8 +44,8 @@ class EtudiantsImportCreatedClasse implements ToCollection, WithHeadingRow
             }
 
             // Générer mot de passe aléatoire
-            // $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
-            $password = 'passer123'; // Pour simplifier les tests, on utilise un mot de passe fixe
+            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            // $password = 'passer123'; // Pour simplifier les tests, on utilise un mot de passe fixe
             // Créer l'utilisateur
             $user = User::create([
                 'name' => $row['name'],
@@ -79,7 +79,7 @@ class EtudiantsImportCreatedClasse implements ToCollection, WithHeadingRow
             ]);
 
             // Envoyer email via queue
-            // Mail::to($user->email)->queue(new CreationEtudiantMail($user->name, $user->email, $password));
+            Mail::to($user->email)->queue(new CreationEtudiantMail($user->name, $user->email, $password));
         }
     }
 }
