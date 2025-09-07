@@ -24,7 +24,7 @@ class UserController extends Controller
             );
         }
 
-        if (!$user->hasRole('Administrateur')) {
+        if (!$user || !$user->hasAnyRole(['Administrateur', 'Enseignant'])) {
             return response()->json([
                 'message' => 'Accès refusé. Rôle Administrateur requis.'
             ], 403);
@@ -43,6 +43,11 @@ class UserController extends Controller
             })
             ->with('roles')
             ->get();
+        if (!$assistants) {
+            $allassistants = User::role('Assistant')->with('roles')->get();
+            Log::info('Liste des assistants récupérée:', $allassistants->toArray());
+            return response()->json($allassistants, 200);
+        }
 
         return response()->json($assistants, 200);
     }
@@ -79,7 +84,6 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $this->checkAdmin();
 
         $adminId = auth()->user()->admin->id;
 

@@ -83,6 +83,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/send', [NotificationController::class, 'send']);
     Route::get('/notifications', [NotificationController::class, 'getNotifications']);
     Route::get('/assistant/notifications', [NotificationController::class, 'getAssistantNotifications']);
+    Route::get('/assistant/admin', [NotificationController::class, 'getMyAdmin']);
+    // Route::get('/assistant/admin/', [NotificationController::class, 'getAdminForAssistant']);
+
 
 
 });

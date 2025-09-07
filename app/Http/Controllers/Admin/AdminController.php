@@ -33,8 +33,6 @@ class AdminController extends Controller
      */
     public function index()
     {
-        $this->checkSuperAdmin();
-
         $admins = User::role('Administrateur')->with('roles')->get();
         return response()->json($admins, 200);
     }

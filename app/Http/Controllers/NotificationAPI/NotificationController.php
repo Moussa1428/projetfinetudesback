@@ -5,6 +5,7 @@ namespace App\Http\Controllers\NotificationAPI;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Mail\NotificationMail;
+use App\Models\Assistant;
 use App\Models\Etudiant;
 use App\Models\Groupe;
 use App\Models\Notification;
@@ -196,4 +197,44 @@ class NotificationController extends Controller
 
         return response()->json($notifications);
     }
+
+    public function getAdminForAssistant()
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('Assistant')) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        // Récupérer l’assistant lié à cet utilisateur
+        $assistant = $user->assistant()->with('admin.user')->first();
+
+        if (!$assistant || !$assistant->admin) {
+            return response()->json(['message' => 'Aucun administrateur lié'], 404);
+        }
+
+        return response()->json($assistant->admin->user); // renvoie directement l'utilisateur admin
+    }
+    public function getMyAdmin()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('Assistant')) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        $assistant = Assistant::with('admin.user')
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$assistant) {
+            return response()->json(['message' => 'Assistant non trouvé'], 404);
+        }
+
+        return response()->json($assistant->admin->user);
+    }
+
+
+
+
 }
