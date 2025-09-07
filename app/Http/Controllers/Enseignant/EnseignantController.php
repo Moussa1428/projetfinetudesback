@@ -17,7 +17,7 @@ class EnseignantController extends Controller
     private function checkAccess()
     {
         $user = auth('sanctum')->user();
-        if (!$user || !$user->hasAnyRole(['Administrateur', 'Assistant'])) {
+        if (!$user || !$user->hasAnyRole(['Administrateur', 'Assistant','Enseignant'])) {
             abort(403, 'Accès refusé. Rôle Administrateur ou Assistant requis.');
         }
     }

@@ -35,21 +35,31 @@ class UserController extends Controller
     {
         $this->checkAdmin();
 
-        $adminId = auth()->user()->admin->id;
+        $user = auth()->user();
 
-        $assistants = User::role('Assistant')
-            ->whereHas('assistant', function ($query) use ($adminId) {
-                $query->where('admin_id', $adminId);
-            })
-            ->with('roles')
-            ->get();
-        if (!$assistants) {
-            $allassistants = User::role('Assistant')->with('roles')->get();
-            Log::info('Liste des assistants récupérée:', $allassistants->toArray());
-            return response()->json($allassistants, 200);
+        // Vérifier si l'utilisateur a bien une relation admin
+        $adminId = $user->admin->id ?? null;
+
+        if ($adminId) {
+            $assistants = User::role('Assistant')
+                ->whereHas('assistant', function ($query) use ($adminId) {
+                    $query->where('admin_id', $adminId);
+                })
+                ->with('roles')
+                ->get();
+
+            if ($assistants->isEmpty()) {
+                $allassistants = User::role('Assistant')->with('roles')->get();
+                Log::info('Liste des assistants récupérée:', $allassistants->toArray());
+                return response()->json($allassistants, 200);
+            }
+
+            return response()->json($assistants, 200);
         }
 
-        return response()->json($assistants, 200);
+        // Si pas admin → on renvoie tous les assistants
+        $allassis = User::role('Assistant')->with('roles')->get();
+        return response()->json($allassis, 200);
     }
 
     public function store(RequestUser $request)
