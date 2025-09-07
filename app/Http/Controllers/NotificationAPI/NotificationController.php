@@ -178,4 +178,22 @@ class NotificationController extends Controller
 
         return response()->json($notifications);
     }
+
+    public function getAssistantNotifications()
+    {
+        $user = auth()->user();
+
+        // Vérifie que l’utilisateur est bien un assistant
+        if (!$user->hasRole('Assistant')) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        // On récupère toutes les notifications où target_id = id de l’assistant connecté
+        $notifications = \App\Models\Notification::with('sender')
+            ->where('target_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($notifications);
+    }
 }
