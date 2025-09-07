@@ -16,9 +16,6 @@ use Illuminate\Support\Facades\Mail;
 
 class NotificationController extends Controller
 {
-    /**
-     * Envoi d’une notification
-     */
     public function send(Request $request)
     {
         $request->validate([
@@ -65,10 +62,6 @@ class NotificationController extends Controller
         // Marque comme envoyée (si tu as ajouté une colonne is_sent)
         $notification->update(['is_sent' => true]);
     }
-
-    /**
-     * Envoi email quand Admin crée une notification
-     */
     private function sendEmailNotification(Notification $notification)
     {
         $users = collect();
@@ -108,10 +101,6 @@ class NotificationController extends Controller
         }
     }
 
-
-    /**
-     * 📌 Récupérer les notifications
-     */
     public function getNotifications(Request $request)
     {
         $request->validate([
