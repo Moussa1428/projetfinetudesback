@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Classe\ClasseRequest;
 use App\Models\Assistant;
 use App\Models\Classe;
+use App\Models\Enseignant;
+use App\Models\Etudiant;
+use App\Models\Groupe;
+use Illuminate\Container\Attributes\Log;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -284,4 +289,22 @@ class ClasseController extends Controller
             'classe' => $classe
         ], 200);
     }
+
+    public function stats()
+    {
+        return response()->json([
+            'etudiants'   => Etudiant::count(),
+            'enseignants' => Enseignant::count(),
+            'classes'     => Classe::count(),
+            'groupes'     => Groupe::count(),
+        ]);
+    }
+
+    public function classesAvecEffectif(): JsonResponse
+    {
+        $classes = Classe::withCount('etudiants')->get(['id', 'nom']);
+        return response()->json($classes);
+    }
+
+
 }

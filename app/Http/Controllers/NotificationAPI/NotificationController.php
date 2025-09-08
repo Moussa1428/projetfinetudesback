@@ -235,6 +235,24 @@ class NotificationController extends Controller
     }
 
 
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->etudiant) {
+            return response()->json(['message' => 'Seuls les étudiants ont accès aux notifications'], 403);
+        }
+
+        $classeId = $user->etudiant->classe_id;
+
+        $notifications = Notification::where('target_type', 'Classe')
+            ->where('target_id', $classeId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['data' => $notifications]);
+    }
+
 
 
 }

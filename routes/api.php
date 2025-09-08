@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('classes', [ClasseController::class, 'index']);
     Route::post('classes', [ClasseController::class, 'storeclasse']);
+    Route::get('/classes/effectif', [ClasseController::class, 'classesAvecEffectif']);
     Route::get('classes/{classe}', [ClasseController::class, 'show']);
     Route::put('classes/{classe}', [ClasseController::class, 'update']);
     Route::delete('classes/{classe}', [ClasseController::class, 'destroy']);
@@ -26,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('etudiants/import', [ImportController::class, 'importEtudiant']);
     Route::post('classes/import-etudiants', [ImportController::class, 'importEtudiantCreationClasse']);
     Route::put('classes/{classe}/toggle-status', [ClasseController::class, 'toggleStatus']);
+    Route::get('/dashboard/stats', [ClasseController::class, 'stats']);
+
+
 
 
 
@@ -80,6 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('enseignants/{id}/toggle-active', [EnseignantController::class, 'toggleActive']);
 
 
+    Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/send', [NotificationController::class, 'send']);
     Route::get('/notifications', [NotificationController::class, 'getNotifications']);
     Route::get('/assistant/notifications', [NotificationController::class, 'getAssistantNotifications']);

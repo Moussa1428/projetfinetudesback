@@ -84,8 +84,8 @@ class EtudiantController extends Controller
             $dataUser = $requestUser->validated();
 
             // Générer un mot de passe aléatoire de 8 caractères
-            $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
-            // $password = 'passer123'; // Pour simplifier les tests, on utilise un mot de passe fixe
+            // $password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+            $password = 'passer123'; // Pour simplifier les tests, on utilise un mot de passe fixe
             $dataUser['password'] = Hash::make($password);
 
             // Vérification email & phone uniques
@@ -120,7 +120,7 @@ class EtudiantController extends Controller
             $etudiant = $user->etudiant()->create($dataEtudiant);
 
             // Envoi du mail avec identifiants
-            Mail::to($user->email)->send(new CreationEtudiantMail($user->name, $user->email, $password));
+            // Mail::to($user->email)->send(new CreationEtudiantMail($user->name, $user->email, $password));
 
             return response()->json([
                 'message' => 'Étudiant créé avec succès',
