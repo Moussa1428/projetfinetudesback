@@ -1,0 +1,310 @@
+<?php
+
+namespace App\Http\Controllers\Assistant;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Classe\ClasseRequest;
+use App\Models\Assistant;
+use App\Models\Classe;
+use App\Models\Enseignant;
+use App\Models\Etudiant;
+use App\Models\Groupe;
+use Illuminate\Container\Attributes\Log;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class ClasseController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+
+        if ($user->hasRole('Assistant')) {
+            // L'assistant voit toutes les classes qu’il a créées ou dont il est responsable
+            $classes = Classe::with(['etudiants.user', 'createur'])
+                ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
+                ->get();
+        } elseif ($user->hasRole('Administrateur')) {
+            // L’admin voit toutes les classes qu’il a créées ou dont il est responsable
+            $classes = Classe::with(['etudiants.user', 'createur'])
+                ->where('created_by', $user->id)
+                ->orWhere('responsable_id', $user->id)
+                ->get();
+        } elseif ($user->hasRole('Etudiant')) {
+            // L’étudiant voit uniquement sa classe et tous les étudiants de cette classe
+            $etudiant = $user->etudiant;
+            if (!$etudiant) {
+                return response()->json(['message' => 'Aucune classe associée'], 404);
+            }
+
+            $classes = Classe::with(['etudiants.user', 'createur'])
+                ->where('id', $etudiant->classe_id)
+                ->get();
+        } else {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        // Transformer les données pour renvoyer chaque classe avec sa liste d'étudiants
+        $result = $classes->map(function ($classe) {
+            return [
+                'id' => $classe->id,
+                'nom' => $classe->nom,
+                'niveau' => $classe->niveau,
+                'filiere' => $classe->filiere,
+                'anneeacademique' => $classe->anneeacademique,
+                'code' => $classe->code,
+                'status' => $classe->status,
+                'created_by' => $classe->created_by,
+                'responsable_id' => $classe->responsable_id,
+                'createur' => $classe->createur ? [
+                    'id' => $classe->createur->id,
+                    'name' => $classe->createur->name,
+                    'last_name' => $classe->createur->last_name,
+                ] : null,
+                'etudiants' => $classe->etudiants->map(function ($etudiant) {
+                    return [
+                        'id' => $etudiant->id,
+                        'matricule' => $etudiant->matricule,
+                        'user' => [
+                            'id' => $etudiant->user->id,
+                            'name' => $etudiant->user->name,
+                            'last_name' => $etudiant->user->last_name,
+                            'email' => $etudiant->user->email,
+                            'phone' => $etudiant->user->phone,
+                            'is_active' => $etudiant->user->is_active,
+                        ]
+                    ];
+                })
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+
+    public function store(ClasseRequest $request)
+    {
+        $data = $request->validated();
+
+        // Générer un code unique pour la classe
+        $data['code'] = $this->generateUniqueCode($data['filiere'], $data['niveau'], $data['anneeacademique']);
+
+        // Vérifier unicité du code (optionnel, pour être sûr)
+        $suffix = 1;
+        $original_code = $data['code'];
+        while (Classe::where('code', $data['code'])->exists()) {
+            $data['code'] = $original_code . '-' . $suffix;
+            $suffix++;
+        }
+
+        $classe = Classe::create($data);
+
+        return response()->json($classe, 201);
+    }
+
+    public function removeEtudiant($classeId, $etudiantId)
+    {
+
+
+        $user = Auth::user();
+
+        $classe = Classe::with('etudiants.user')->find($classeId);
+        if (!$classe) {
+            return response()->json(['message' => 'Classe non trouvée'], 404);
+        }
+
+        // Seul le créateur de la classe peut retirer un étudiant
+        if ($classe->created_by !== $user->id) {
+            return response()->json(['message' => "Vous n'avez pas l'autorisation de retirer cet étudiant."], 403);
+        }
+
+        // Vérifier que l'étudiant appartient à cette classe
+        $etudiant = $classe->etudiants()->where('id', $etudiantId)->first();
+        if (!$etudiant) {
+            return response()->json(['message' => "Étudiant non trouvé dans cette classe."], 404);
+        }
+
+        $etudiant->classe_id = null;
+        // Retirer de la classe
+
+        // Supprimer l'utilisateur associé
+        $etudiantUser = $etudiant->user;
+        $etudiant->delete(); // supprime l'étudiant
+        if ($etudiantUser) {
+            $etudiantUser->delete(); // supprime le compte utilisateur
+        }
+
+        return response()->json(['message' => 'Étudiant et son compte utilisateur supprimés avec succès'], 200);
+    }
+
+    public function storeclasse(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('Assistant')) {
+            return response()->json(['message' => 'Seul un assistant peut créer une classe'], 403);
+        }
+
+        $data = $request->validate([
+            'nom' => 'required|string|max:255',
+            'niveau' => 'required|string|max:255',
+            'filiere' => 'required|string|max:255',
+            'anneeacademique' => 'required|string|max:255',
+        ]);
+
+        // Récupérer l’assistant lié au user connecté
+        $assistant = Assistant::where('user_id', $user->id)->first();
+        if (!$assistant) {
+            return response()->json(['message' => 'Cet assistant n’est lié à aucun administrateur'], 400);
+        }
+
+        // Récupérer le user_id de l’administrateur
+        $admin = $assistant->admin;
+        if (!$admin || !$admin->user_id) {
+            return response()->json(['message' => 'Aucun administrateur associé à cet assistant'], 400);
+        }
+
+        // Générer un code unique pour la classe
+        $data['code'] = $this->generateUniqueCode($data['filiere'], $data['niveau'], $data['anneeacademique']);
+
+        // Ajouter les champs supplémentaires
+        $data['created_by'] = $user->id;           // id de l'assistant
+        $data['responsable_id'] = $admin->user_id; // id du user administrateur
+
+        $classe = Classe::create($data);
+
+        return response()->json([
+            'message' => 'Classe créée avec succès',
+            'classe' => $classe
+        ], 201);
+    }
+
+
+
+    private function generateUniqueCode($filiere, $niveau, $anneeacademique)
+    {
+        $filiereCode = $this->getFiliereCode($filiere);
+        $baseCode = "{$filiereCode}-{$niveau}-{$anneeacademique}"; // Exemple : GL-L1-2025
+
+        $code = $baseCode;
+        $counter = 1;
+
+        // Vérifier si le code existe déjà
+        while (Classe::where('code', $code)->exists()) {
+            $code = "{$baseCode}-{$counter}";
+            $counter++;
+        }
+
+        return $code;
+    }
+
+    private function getFiliereCode($filiere)
+    {
+        $filiereCodes = [
+            'Genie Logiciel' => 'GL',
+            'Reseaux et Systeme' => 'RS',
+            'Intelligence Artificielle' => 'IA',
+            'Ingénierie de Données' => 'ID',
+            'Informatique Appliquée a la Gestion des Entreprises' => 'IAGE',
+        ];
+
+        return $filiereCodes[$filiere] ?? strtoupper(substr(str_replace(' ', '', $filiere), 0, 3));
+    }
+
+
+    public function update(Request $request, $id)
+    {
+        $classe = Classe::findOrFail($id);
+
+        $data = $request->validate([
+            'nom' => 'sometimes|string|max:255',
+            'niveau' => 'sometimes|string|max:255',
+            'filiere' => 'sometimes|string|max:255',
+            'anneeacademique' => 'sometimes|string|max:255',
+            'status' => 'sometimes|boolean'
+        ]);
+
+        $classe->update($data);
+
+        return response()->json($classe, 200);
+    }
+
+    public function destroy($id)
+    {
+        $classe = Classe::find($id);
+
+        if (!$classe) {
+            return response()->json(['message' => 'Classe non trouvée'], 404);
+        }
+
+        $classe->delete();
+        return response()->json(['message' => 'Classe supprimée avec succès'], 200);
+    }
+
+    public function show($id)
+    {
+        $classe = Classe::with('etudiants.user')->find($id);
+
+        if (!$classe) {
+            return response()->json(['message' => 'Classe non trouvée'], 404);
+        }
+
+        return response()->json($classe, 200);
+    }
+
+    /**
+     * Activer / Désactiver une classe
+     */
+    public function toggleStatus($id)
+    {
+        $user = Auth::user();
+        $classe = Classe::find($id);
+
+        if (!$classe) {
+            return response()->json(['message' => 'Classe non trouvée'], 404);
+        }
+
+        // Vérifier les droits :
+        // - Assistant peut changer ses classes
+        // - Admin peut changer les classes de ses assistants
+        if ($user->hasRole('Assistant') && $classe->created_by !== $user->id) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        } elseif ($user->hasRole('Administrateur')) {
+            $assistantIds = $user->assistants()->pluck('user_id')->toArray();
+            if (!in_array($classe->created_by, $assistantIds)) {
+                return response()->json(['message' => 'Non autorisé'], 403);
+            }
+        } elseif (!$user->hasRole('Assistant') && !$user->hasRole('Administrateur')) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        // Basculer le status
+        $classe->status = !$classe->status;
+        $classe->save();
+
+        return response()->json([
+            'message' => 'Status mis à jour avec succès',
+            'classe' => $classe
+        ], 200);
+    }
+
+    public function stats()
+    {
+        return response()->json([
+            'etudiants'   => Etudiant::count(),
+            'enseignants' => Enseignant::count(),
+            'classes'     => Classe::count(),
+            'groupes'     => Groupe::count(),
+        ]);
+    }
+
+    public function classesAvecEffectif(): JsonResponse
+    {
+        $classes = Classe::withCount('etudiants')->get(['id', 'nom']);
+        return response()->json($classes);
+    }
+
+
+}
